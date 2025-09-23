@@ -1,4 +1,4 @@
-**StockPred**, a project that gathers machine learning and deep learning models for stock forecasting.
+# **StockPred**, a project that gathers machine learning and deep learning models for stock forecasting.
 
 ## Models
 I coded an LSTM RNN and a Simple Signal Rolling Agent to perform stock forecasting on various stocks.
