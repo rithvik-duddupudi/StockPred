@@ -1,5 +1,11 @@
 # **StockPred**
 
+<p align="center">
+    <a href="#readme">
+        <img alt="logo" width="50%" src="WebsiteUI.png">
+    </a>
+</p>
+
 ## Overview
 StockPred involves an LSTM RNN and a Simple Signal Rolling Agent to perform stock forecasting on various stocks.
 
