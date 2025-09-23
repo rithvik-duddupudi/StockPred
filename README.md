@@ -14,7 +14,7 @@ I then coded the frontend for the LSTM RNN and Simple Signal Rolling Agent insid
 
 Signal rolling agent
 
-<img src="agents-results/signal-rolling-agent.png" width="70%" align="">
+<img src="signal-rolling-agent.png" width="70%" align="">
 
 
 ### Model Results
@@ -28,4 +28,4 @@ The model did forecasting based on last 30 days, and this experiment was repeate
 
 LSTM, accuracy 95.693%, time taken for 1 epoch 01:09
 
-<img src="deep-learning-models-results/lstm.png" width="70%" align="">
+<img src="lstm.png" width="70%" align="">
