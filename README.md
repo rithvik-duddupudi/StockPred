@@ -10,7 +10,7 @@
 StockPred involves an LSTM RNN and a Simple Signal Rolling Agent to perform stock forecasting on various stocks.
 
 ## Frontend
-I then coded the frontend for the LSTM RNN and Simple Signal Rolling Agent inside Tensorflow JS, and you can try it at [the StockPredict website](https://stockpredict999.netlify.app/). In the application, you can upload an historical CSV and customize model parameters to predict forecasts. The web application allows users to see a live loss function with real and predicted histograms, a simulation of buying and selling actions, and buy/sell indicators at various points along the graph.
+I then coded the frontend for the LSTM RNN and Simple Signal Rolling Agent inside Tensorflow JS, and you can try it at [the StockPredict website](https://stockpred9.netlify.app/). In the application, you can upload an historical CSV and customize model parameters to predict forecasts. The web application allows users to see a live loss function with real and predicted histograms, a simulation of buying and selling actions, and buy/sell indicators at various points along the graph.
 
 ## Results
 
