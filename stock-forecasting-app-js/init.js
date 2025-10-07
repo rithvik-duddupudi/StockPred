@@ -1,18 +1,34 @@
+// ### 1. Global Variable Declarations
+// A list of hex color codes for styling charts.
 var color_list = ['#c23531','#2f4554', '#61a0a8', '#d48265', '#91c7ae','#749f83',  '#ca8622', '#bda29a','#6e7074', '#546570', '#c4ccd3'];
 var colors = ['#5793f3', '#d14a61', '#675bba','#b62f46'];
+
+// Extracts the closing prices from the hardcoded GOOGLE data (likely a fallback).
 var close = GOOGLE['data'].map(function(el, idx) {
   return el[1];
-})
+});
+// Formats the hardcoded GOOGLE data for the ECharts candlestick chart [open, close, low, high].
 var stocks = GOOGLE['data'].map(function(el, idx) {
   return [el[0],el[1],el[3],el[2]];
-})
+});
+// Extracts dates and volumes from the hardcoded GOOGLE data.
 var stock_date = GOOGLE['date'];
 var volume = GOOGLE['volume'];
-var csv;
-var indeces = {};
-var dataMA5, dataMA10, dataMA20, dataMA30;
-var total_investment, total_gain, stock_changes, stock_changes_percent
 
+// Variables to be populated later, especially after CSV upload.
+var csv;
+var indeces = {}; // To store column indices from the uploaded CSV.
+var dataMA5, dataMA10, dataMA20, dataMA30; // To store moving average data.
+var total_investment, total_gain, stock_changes, stock_changes_percent; // To store analysis results.
+
+// ### 2. Helper Functions
+
+/**
+ * Applies exponential smoothing to a time series.
+ * @param {number[]} scalars - An array of numerical data points.
+ * @param {number} weight - The smoothing factor (between 0 and 1).
+ * @returns {number[]} - The smoothed data array.
+ */
 function smoothing_line(scalars,weight){
   last = scalars[0]
   smoothed = []
@@ -24,15 +40,27 @@ function smoothing_line(scalars,weight){
   return smoothed
 }
 
+/**
+ * Generates HTML cards to display investment results with colored arrows.
+ * @param {string[]} strings - An array of labels for the results (e.g., "total gains:").
+ * @param {number[]} values - An array of numerical results corresponding to the labels.
+ */
 function generate_investment(strings,values){
   colors = "";
   for(var i = 0; i < strings.length;i++){
+    // Generates a green card with an upward arrow for non-negative values.
     if(values[i]>=0) colors += "<div class='col s12 m2'><div class='card'><div class='card-content'><a class='btn-floating waves-effect waves-light green' style='width:100px;height:100px;margin-bottom:20px'><i class='material-icons' style='font-size:3rem; line-height:95px'>arrow_upward</i></a><p><h6>"+strings[i]+values[i]+"</h6></p></div></div></div>";
+    // Generates a red card with a downward arrow for negative values.
     else colors += "<div class='col s12 m2'><div class='card'><div class='card-content'><a class='btn-floating waves-effect waves-light red' style='width:100px;height:100px;margin-bottom:20px'><i class='material-icons' style='font-size:3rem; line-height:95px'>arrow_downward</i></a><p><h6>"+strings[i]+values[i]+"</h6></p></div></div></div>";
   }
+  // Inserts the generated HTML into the '#color-investment' div.
   $('#color-investment').html(colors);
 }
 
+/**
+ * Builds a configuration object for the PapaParse CSV parser based on UI inputs.
+ * @returns {object} - The configuration object for PapaParse.
+ */
 function buildConfig() {
   return {
     delimiter: $('#delimiter').val(),
@@ -44,16 +72,26 @@ function buildConfig() {
     encoding: $('#encoding').val(),
     worker: $('#worker').prop('checked'),
     comments: $('#comments').val(),
-    complete: completeFn,
-    error: errorFn
+    complete: completeFn, // Function to call when parsing is complete.
+    error: errorFn      // Function to call on error.
   }
 }
 
+/**
+ * Error callback for PapaParse. Displays an error toast.
+ * @param {object} err - The error object.
+ * @param {object} file - The file being parsed.
+ */
 function errorFn(err, file) {
     Materialize.toast("ERROR: " + err + file,3000)
 }
 
+/**
+ * Completion callback for PapaParse. Processes the parsed CSV data.
+ * @param {object} results - The results object from PapaParse.
+ */
 function completeFn(results) {
+  // Basic error handling for parsing results.
   if (results && results.errors) {
     if (results.errors) {
       errorCount = results.errors.length;
@@ -62,13 +100,20 @@ function completeFn(results) {
     if (results.data && results.data.length > 0)
     rowCount = results.data.length
   }
+  // Store the parsed data.
   csv = results['data'];
+  // Map header names to their column index for easy access.
   for(var i = 0;i<csv[0].length;i++) indeces[csv[0][i].toLowerCase()] = i;
+
+  // Reset global data arrays.
   stocks = [];
   volume = [];
   stock_date = [];
+  // Loop through the CSV rows (starting from 1 to skip the header).
   for(var i = 1;i<csv.length;i++){
+    // Data validation: ensure all required numeric fields are valid numbers.
     if(!isNaN(csv[i][indeces['open']]) && !isNaN(csv[i][indeces['close']]) && !isNaN(csv[i][indeces['low']]) && !isNaN(csv[i][indeces['high']]) && !isNaN(csv[i][indeces['volume']])){
+      // Push processed data into the global arrays.
       stocks.push([parseFloat(csv[i][indeces['open']]),
       parseFloat(csv[i][indeces['close']]),
       parseFloat(csv[i][indeces['low']]),
@@ -77,26 +122,37 @@ function completeFn(results) {
       stock_date.push(csv[i][indeces['date']]);
     }
   }
+  // Re-extract the closing prices from the newly loaded data.
   close = stocks.map(function(el, idx) {
     return el[1];
   })
+  // Re-plot the main stock chart with the new data.
   plot_stock();
 }
 
+// ### 3. Event Handlers for CSV Upload
 var csv, config = buildConfig();
+// Triggers the parsing process when a user selects a file.
 $('#uploadcsv').change(function() {
     csv = null;
     file = document.getElementById('uploadcsv');
+    // Basic validation to ensure the file is a .csv.
     if ($(this).val().search('.csv') <= 0) {
         $(this).val('');
         Materialize.toast('Only support CSV', 4000);
         return
     }
+    // Uses the 'jquery-csv' plugin's 'parse' method on the file input.
     $(this).parse({
         config: config
     })
 })
 
+/**
+ * Calculates and plots the distribution of real vs. predicted values.
+ * @param {number[]} real - Array of actual stock prices.
+ * @param {number[]} predict - Array of predicted stock prices.
+ */
 function calculate_distribution(real,predict){
   data_plot = []
   data_arr = [real,predict]
@@ -104,7 +160,9 @@ function calculate_distribution(real,predict){
     data = data_arr[outer]
     max_arr = Math.max(...data)
     min_arr = Math.min(...data)
+    // Determine the number of bins for the histogram.
     num_bins = Math.ceil(Math.sqrt(data.length));
+    // Use a kernel density estimator (from science.v1.min.js) to smooth the distribution.
     kde = kernelDensityEstimator(epanechnikovKernel(max_arr/50), arange(min_arr,max_arr,(max_arr-min_arr)/num_bins))
     kde = kde(data)
     bar_x = [], bar_y = []
@@ -116,9 +174,9 @@ function calculate_distribution(real,predict){
     for(var i = 0; i < bar_y.length;i++) bar_y[i] -= min_line_y
     data_plot.push({'bar_x':bar_x,'bar_y':bar_y})
   }
+  // ECharts configuration object for the distribution bar chart.
   option = {
     color: colors,
-
     tooltip: {
       trigger: 'axis',
       axisPointer: {
@@ -158,6 +216,12 @@ function calculate_distribution(real,predict){
   bar_plot.setOption(option,true);
 }
 
+/**
+ * Recalculates the simple moving average (MA) for a given period from the 'stocks' array.
+ * @param {number} dayCount - The number of days in the moving average window.
+ * @param {Array<Array<number>>} data - The OHLC stocks data array.
+ * @returns {Array<string|number>} - An array of moving average values, formatted to 2 decimal places.
+ */
 function calculateMA(dayCount, data) {
   var result = [];
   for (var i = 0, len = data.length; i < len; i++) {
@@ -167,18 +231,23 @@ function calculateMA(dayCount, data) {
     }
     var sum = 0;
     for (var j = 0; j < dayCount; j++) {
-      sum += data[i - j][1];
+      sum += data[i - j][1]; // Index 1 is the closing price.
     }
     result.push((sum / dayCount).toFixed(2));
   }
   return result;
 }
 
+/**
+ * Initializes and plots the main stock candlestick chart using ECharts.
+ */
 function plot_stock(){
+  // Recalculate moving averages based on the current 'stocks' data.
   dataMA5 = calculateMA(5, stocks);
   dataMA10 = calculateMA(10, stocks);
   dataMA20 = calculateMA(20, stocks);
   dataMA30 = calculateMA(30, stocks);
+  // Large, complex ECharts configuration object for the main stock chart.
   option = {
     animation: false,
     color: color_list,
@@ -285,6 +354,7 @@ function plot_stock(){
       right: 30,
       top: 400
     }],
+    // Graphic elements to display current MA values dynamically.
     graphic: [{
       type: 'group',
       left: 'center',
@@ -308,6 +378,7 @@ function plot_stock(){
         right: 0
       }]
     }],
+    // Data series for the chart.
     series: [{
       name: 'Volume',
       type: 'bar',
@@ -391,8 +462,11 @@ function plot_stock(){
   var chart_stock = echarts.init(document.getElementById('div_output'));
   chart_stock.setOption(option,true);
 }
+// Initial plot using the hardcoded GOOGLE data.
 plot_stock();
 
+// ### 4. UI Interaction and TensorFlow.js Training
+// Populates the training form with suggested hyperparameter values.
 $('#suggestbutton').click(function(){
   $('#learningrate').val(0.01)
   $('#inputdropoutrate').val(1.0)
@@ -407,11 +481,16 @@ $('#suggestbutton').click(function(){
   $('#future').val(30)
   $('#smooth').val(0.5)
 })
+// Clicks the suggest button on page load to pre-fill the form.
 $('#suggestbutton').click()
+
+// Main training function, triggered when the 'Train' button is clicked.
 $('#trainbutton').click(function(){
+  // Clear previous logs.
   $('#log').html('');
   $('#log-invest').html('');
   $('.close-first').css('display','block');
+  // Input validation for dropout and smoothing rates.
   if(parseFloat($('#inputdropoutrate').val())<0 || parseFloat($('#inputdropoutrate').val())>1){
     Materialize.toast('input dropout must bigger than 0 and less than 1', 4000)
     return
@@ -424,43 +503,62 @@ $('#trainbutton').click(function(){
     Materialize.toast('output dropout must bigger than 0 and less than 1', 4000)
     return
   }
+  // Use a timeout to allow the UI to update before starting the intensive training process.
   setTimeout(function(){
-    minmax_scaled = minmax_1d(close);
+    // --- Data Preparation ---
+    minmax_scaled = minmax_1d(close); // Normalize the closing prices.
     timestamp = parseInt($('#timestamp').val())
     epoch = parseInt($('#epoch').val())
     future = parseInt($('#future').val())
     X_scaled = minmax_scaled.scaled.slice([0],[Math.floor(minmax_scaled.scaled.shape[0]/timestamp)*timestamp+1])
+    
+    // --- Model Definition (using TensorFlow.js layers API) ---
     cells = [tf.layers.lstmCell({units: parseInt($('#sizelayer').val())})];
     rnn = tf.layers.rnn({cell: cells, returnSequences: true,returnState:true});
     dense_layer = tf.layers.dense({units: 1, activation: 'linear'});
+    
+    // Defines the forward pass of the model.
     function f(x,states){
       x = dropout_nn(x,parseFloat($('#inputdropoutrate').val()))
       forward = rnn.apply(x,{initialState:states});
       last_sequences = dropout_nn(forward[0].reshape([x.shape[1],parseInt($('#sizelayer').val())]),parseFloat($('#outputdropoutrate').val()))
       return {'forward':dense_layer.apply(last_sequences),'states_1':forward[1],'states_2':forward[2]}
     }
+    
+    // Defines the loss function (Mean Squared Error).
     cost = (label, pred) => tf.square(tf.sub(label,pred)).mean();
+    // Defines the optimizer.
     optimizer = tf.train.adam(parseFloat($('#learningrate').val()));
+    // Initializes the LSTM states.
     batch_states = [tf.zeros([1,parseInt($('#sizelayer').val())]),tf.zeros([1,parseInt($('#sizelayer').val())])];
     arr_loss = [], arr_layer = []
+    
+    // --- Asynchronous Training Loop ---
     function async_training_loop(callback) {
       (function loop(i) {
         var total_loss = 0
+        // Loop through the training data in batches (timesteps).
         for(var k = 0; k < Math.floor(X_scaled.shape[0]/timestamp)*timestamp; k+=timestamp){
           batch_x = X_scaled.slice([k],[timestamp]).reshape([1,-1,1])
           batch_y = X_scaled.slice([k+1],[timestamp]).reshape([-1,1])
+          // Perform one optimization step (training).
           feed = f(batch_x,batch_states)
           optimizer.minimize(() => cost(batch_y,f(batch_x,batch_states)['forward']));
           total_loss += parseFloat(cost(batch_y,f(batch_x,batch_states)['forward']).toString().slice(7));
+          // Pass the states from the current batch to the next.
           batch_states = [feed.states_1,feed.states_2]
         }
         total_loss /= Math.floor(X_scaled.shape[0]/timestamp);
         arr_loss.push(total_loss)
+
+        // --- Prediction/Forecasting Phase (after one epoch) ---
         output_predict = nj.zeros([X_scaled.shape[0]+future, 1])
         output_predict.slice([0,1],null).assign(tf_str_tolist(X_scaled.slice(0,1))[0],false)
         upper_b = Math.floor(X_scaled.shape[0]/timestamp)*timestamp
         distance_upper_b = X_scaled.shape[0] - upper_b
         batch_states = [tf.zeros([1,parseInt($('#sizelayer').val())]),tf.zeros([1,parseInt($('#sizelayer').val())])];
+        
+        // Predict on the training data.
         for(var k = 0; k < (Math.floor(X_scaled.shape[0]/timestamp)*timestamp); k+=timestamp){
           batch_x = X_scaled.slice([k],[timestamp]).reshape([1,-1,1])
           feed = f(batch_x,batch_states)
@@ -468,6 +566,7 @@ $('#trainbutton').click(function(){
           output_predict.slice([k+1,k+1+timestamp],null).assign(state_forward,false)
           batch_states = [feed.states_1,feed.states_2]
         }
+        // Predict on any remaining data that didn't fit a full timestep.
         batch_x = X_scaled.slice([upper_b],[distance_upper_b]).reshape([1,-1,1])
         feed = f(batch_x,batch_states)
         state_forward = tf_nj_list(feed.forward)
@@ -475,6 +574,8 @@ $('#trainbutton').click(function(){
         pointer = X_scaled.shape[0]+1
         tensor_output_predict = output_predict.reshape([-1]).tolist()
         batch_states = [feed.states_1,feed.states_2]
+
+        // Autoregressive forecasting: use the last prediction as input for the next one.
         for(var k = 0; k < future-1; k+=1){
           batch_x = tf.tensor(tensor_output_predict.slice(pointer-timestamp,pointer)).reshape([1,-1,1])
           feed = f(batch_x,batch_states)
@@ -483,10 +584,15 @@ $('#trainbutton').click(function(){
           pointer += 1
           batch_states = [feed.states_1,feed.states_2]
         }
+
+        // --- Update UI with Results for the current epoch ---
         $('#log').append('Epoch: '+(i+1)+', avg loss: '+total_loss+'<br>');
+        // Reverse the scaling to get actual price predictions.
         predicted_val = tf_nj_list_flatten(reverse_minmax_1d(tf.tensor(tensor_output_predict),minmax_scaled['min'],minmax_scaled['max']))
+        // Apply smoothing to the final prediction line.
         predicted_val = smoothing_line(predicted_val,parseFloat($('#smooth').val()))
         $('#div_output').attr('style','height:450px;');
+        // Extend the date array for the forecasted period.
         new_date = stock_date.slice()
         for(var k = 0; k < future; k+=1){
           somedate = new Date(new_date[new_date.length-1])
@@ -497,6 +603,7 @@ $('#trainbutton').click(function(){
           new_date.push(y.toString()+'-'+mm.toString()+'-'+dd.toString())
         }
 
+        // ECharts option to update the main chart with the predicted line.
         option = {
           animation: false,
           color: color_list,
@@ -717,10 +824,11 @@ $('#trainbutton').click(function(){
             }
           }]
         };
-
         var chart_stock = echarts.init(document.getElementById('div_output'));
         chart_stock.setOption(option,true);
         calculate_distribution(close,predicted_val)
+
+        // Plot the loss graph for the current epoch.
         option = {
           title:{
             text:'loss graph'
@@ -742,25 +850,36 @@ $('#trainbutton').click(function(){
         };
         var chart_line = echarts.init(document.getElementById('div_loss'));
         chart_line.setOption(option,true);
+        
+        // --- Loop Control ---
         if (i < (epoch-1)) {
+          // Use a timeout to prevent the browser from freezing and allow UI updates between epochs.
           setTimeout(function() {loop(++i)}, 2000);
         } else {
+          // If all epochs are complete, call the final callback function.
           callback();
         }
       }(0));
     }
+    
+    // --- Post-Training Simulation and Analysis ---
     async_training_loop(function() {
       $('#log').append('Done training!');
+      // Run a simple investor simulation based on the predictions.
       my_investment = simple_investor(close,predicted_val,parseInt($('#history').val()),
       parseFloat($('#initialmoney').val()),parseInt($('#maxbuy').val()),parseInt($('#maxsell').val()),new_date)
+      
+      // Display the investment simulation log in a table.
       $('#table-body').html('');
       for(var i = 0; i < my_investment['output'].length; i++) $('#table-body').append(my_investment['output'][i]);
+      // Display the overall results.
       $('#log-invest').append("<h6 class='header'>Overall gain: "+my_investment['overall gain']+", Overall investment: "+my_investment['overall investment']+"%</h5>")
       total_investment = my_investment['overall investment']
       total_gain = my_investment['overall gain']
       stock_changes = predicted_val[predicted_val.length-1] - close[0]
       stock_changes_percent = (stock_changes / close[0])*100
 
+      // --- Update Chart with Buy/Sell Markers ---
       var markpoints = []
       for (var i = 0; i < my_investment['buy_X'].length;i++){
         ind = new_date.indexOf(my_investment['buy_X'][i])
@@ -770,6 +889,8 @@ $('#trainbutton').click(function(){
         ind = new_date.indexOf(my_investment['sell_X'][i])
         markpoints.push({name: 'sell', value: 'sell', xAxis: ind, yAxis: my_investment['sell_Y'][i],itemStyle:{color:'#c23531'}})
       }
+      
+      // Final chart update with trading markers.
       option = {
         animation: false,
         color: color_list,
@@ -996,42 +1117,19 @@ $('#trainbutton').click(function(){
 
       var chart_stock = echarts.init(document.getElementById('div_output'));
       chart_stock.setOption(option,true);
-      // $('#after-hell').css('display','block');
-      // formData = new FormData();
-      // formData.append("date", JSON.stringify(stock_date));
-      // formData.append("close", JSON.stringify(close));
-      // formData.append("rolling", $('#history').val());
-      //
-      // xmlhttp = new XMLHttpRequest();
-      // xmlhttp.onreadystatechange = function() {
-      //   if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-      //     try{
-      //       data = JSON.parse(this.responseText);
-      //       plot_pairplot(data)
-      //     }
-      //     catch(err){
-      //       Materialize.toast("error, unable to do post-processing, please try with different data",3000);
-      //       return;
-      //     }
-      //     if(data['error']){
-      //       Materialize.toast("error, unable to do post-processing, please try with different data",3000);
-      //       return;
-      //     }
-      //     else{
-      //     }
-      //   }
-      // };
-      // xmlhttp.open("POST", "http://huseinhouse.com:8070/uploader", true);
-      // xmlhttp.send(formData);
-
     });
   }, 500);
 })
 
+/**
+ * Plots a grid of pair plots and histograms based on data from a backend service.
+ * @param {object} val - The data object returned from the backend.
+ */
 function plot_pairplot(val){
   var chart = echarts.init(document.getElementById('pairplot'));
   var columns = ['Close','Crude Oil','Diesel', 'Gasoline', 'Gold', 'Heating Oil', 'Kerosene', 'Natural Gas', 'Propane'];
 
+  // Dynamically generate grid, axes, series, and titles for each plot.
   var grids = [];
   var xAxes = [];
   var yAxes = [];
@@ -1046,6 +1144,7 @@ function plot_pairplot(val){
       shadowColor: 'rgba(0, 0, 0, 0.3)',
       shadowBlur: 2
     });
+    // The diagonal of the pair plot matrix is a histogram.
     if(k%9==0){
       xAxes.push({
         type: 'category',
@@ -1089,6 +1188,7 @@ function plot_pairplot(val){
         }
       })
     }
+    // Off-diagonal plots are scatter plots.
     else{
       titles.push({
         textAlign: 'center',
@@ -1134,6 +1234,7 @@ function plot_pairplot(val){
     count++;
   }
 
+  // Calculate grid layout positions.
   var rowNumber = Math.ceil(Math.sqrt(count));
   echarts.util.each(grids, function (grid, idx) {
     grid.left = ((idx % rowNumber) / rowNumber * 100 + 2) + '%';
@@ -1145,6 +1246,7 @@ function plot_pairplot(val){
     titles[idx].top = (parseFloat(grid.top)-5) + '%';
   });
 
+  // ECharts option for the pair plot grid.
   option = {
     color:['#c23531', '#61a0a8'],
     legend: {
@@ -1170,6 +1272,7 @@ function plot_pairplot(val){
   chart.setOption(option)
 
 
+  // --- Pi Correlation Chart ---
   var chart_pi = echarts.init(document.getElementById('pi_correlation'));
   var seriesData = [];
   var selected = {};
@@ -1214,6 +1317,7 @@ function plot_pairplot(val){
   };
   chart_pi.setOption(option)
 
+  // --- Stacked Line and Pie Chart ---
   option = {
     legend: {},
     tooltip: {
@@ -1248,6 +1352,7 @@ function plot_pairplot(val){
     ]
   };
   var chart_pie = echarts.init(document.getElementById('div_pie'));
+  // Event listener to update the pie chart when hovering over the line chart.
   chart_pie.on('updateAxisPointer', function (event) {
     var xAxisInfo = event.axesInfo[0];
     if (xAxisInfo) {
@@ -1268,6 +1373,7 @@ function plot_pairplot(val){
   });
   chart_pie.setOption(option);
 
+  // --- Weekly Changes Sparkline Grid ---
   var grids = [];
   var xAxes = [];
   var yAxes = [];
@@ -1323,6 +1429,7 @@ function plot_pairplot(val){
     });
     count++;
   }
+  // Calculate grid layout positions.
   var rowNumber = Math.ceil(Math.sqrt(count));
   echarts.util.each(grids, function (grid, idx) {
     grid.left = ((idx % rowNumber) / rowNumber * 100 + 0.5) + '%';
@@ -1334,6 +1441,7 @@ function plot_pairplot(val){
     titles[idx].top = parseFloat(grid.top) + '%';
   });
 
+  // ECharts option for the sparkline grid.
   option = {
     title: titles.concat([{
       text: 'Weekly % changes',
@@ -1353,6 +1461,7 @@ function plot_pairplot(val){
   };
   var chart_changes = echarts.init(document.getElementById('percent_changes'));
   chart_changes.setOption(option)
+  // Generate the final HTML cards with overall results.
   generate_investment(['total investment(%): ','total gains: ','stock changes: ','stock changes (%): ','gold changes(%): ','crude oil changes(%): '],
 [total_investment.toFixed(2), total_gain.toFixed(2), stock_changes.toFixed(2),
   stock_changes_percent.toFixed(2),(val['gain_crude_oil']*100).toFixed(2),(val['gain_gold']*100).toFixed(2)])
