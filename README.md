@@ -25,12 +25,12 @@ Signal Rolling Agent: 2.10% Return
 
 ### Model Results
 
-For train-test split: 
+For the train-test split: 
 
-1. Train dataset was derived from the starting timestamp until the last 30 days
-2. Test dataset was derived from the last 30 days until the end of the dataset
+1. The train dataset was derived from the starting timestamp until the last 30 days
+2. The test dataset was derived from the last 30 days until the end of the dataset
 
-The model did forecasting based on last 30 days, and this experiment was repeated 10 times. This can be increased locally, and hyperparameter tuning is also recommended.
+The model did forecasting based on the last 30 days, and this experiment was repeated 10 times. This can be increased locally and hyperparameter tuning is also recommended.
 
 LSTM: 94.957% Accuracy 
 
