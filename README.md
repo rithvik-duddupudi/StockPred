@@ -38,4 +38,4 @@ LSTM, accuracy 95.693%, time taken for 1 epoch 01:09
 
 ## Notes 
 
-If running the LSTM or Signal Rolling Agent, make sure to clone the repository and also update the CSV that you want to use for df accordingly. I worked in isolated Jupyter notebooks so I didn't upload the entire dataset folder, but make sure to include the complete file path when uploading the CSV from the datasets folder. 
+If running the LSTM or Signal Rolling Agent, make sure to clone the repository and also update the CSV that you want to use for df accordingly. I worked in isolated Jupyter notebooks so I didn't upload the entire dataset folder, but make sure to include the complete file path when uploading the CSV from the dataset folder. 
