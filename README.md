@@ -18,7 +18,7 @@ I then coded the frontend for the LSTM RNN and Simple Signal Rolling Agent insid
 
 **This agent is only able to buy or sell 1 unit per transaction.**
 
-Signal rolling agent
+Signal Rolling Agent: 2.10% Return
 
 <img src="signal-rolling-agent.png" width="70%" align="">
 
@@ -32,7 +32,7 @@ For train-test split:
 
 The model did forecasting based on last 30 days, and this experiment was repeated 10 times. This can be increased locally, and hyperparameter tuning is also recommended.
 
-LSTM, accuracy 95.693%, time taken for 1 epoch 01:09
+LSTM: 94.957% Accuracy 
 
 <img src="lstm.png" width="70%" align="">
 
